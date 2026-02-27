@@ -1,11 +1,17 @@
 import { createClient } from '@/lib/supabase/server'
 import { requireRole } from '@/lib/auth'
 import { BellCurveChart } from '@/components/bell-curve-chart'
-import { overrideRating, lockCycle, publishCycle } from '../actions'
+import { lockCycle, publishCycle } from '../actions'
+import { OverrideForm } from './override-form'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { RATING_TIERS } from '@/lib/constants'
-import type { RatingTier, Appraisal, Cycle } from '@/lib/types'
+import type { RatingTier, Cycle } from '@/lib/types'
+
+interface AppraisalRow {
+  id: string
+  manager_rating: RatingTier | null
+  final_rating: RatingTier | null
+  users: { full_name: string; department: string | null } | null
+}
 
 export default async function CalibrationPage({ searchParams }: { searchParams: Promise<{ cycle?: string }> }) {
   await requireRole(['hrbp'])
@@ -17,23 +23,25 @@ export default async function CalibrationPage({ searchParams }: { searchParams: 
   const { data: cycle } = await supabase.from('cycles').select('*').eq('id', cycleId).single()
   const { data: appraisals } = await supabase
     .from('appraisals')
-    .select('*, users!appraisals_employee_id_fkey(full_name, department)')
+    .select('id, manager_rating, final_rating, users!appraisals_employee_id_fkey(full_name, department)')
     .eq('cycle_id', cycleId)
 
+  const rows = (appraisals ?? []) as unknown as AppraisalRow[]
   const distribution: Record<RatingTier, number> = { FEE: 0, EE: 0, ME: 0, SME: 0, BE: 0 }
-  for (const a of appraisals ?? []) {
-    const rating = (a as Appraisal).final_rating ?? (a as Appraisal).manager_rating
-    if (rating) distribution[rating as RatingTier]++
+  for (const a of rows) {
+    const rating = a.final_rating ?? a.manager_rating
+    if (rating) distribution[rating]++
   }
 
-  const isCalibrating = (cycle as Cycle)?.status === 'calibrating'
-  const isLocked = (cycle as Cycle)?.status === 'locked'
+  const typedCycle = cycle as Cycle | null
+  const isCalibrating = typedCycle?.status === 'calibrating'
+  const isLocked = typedCycle?.status === 'locked'
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Calibration — {(cycle as Cycle)?.name}</h1>
+      <h1 className="text-2xl font-bold">Calibration — {typedCycle?.name}</h1>
 
-      <BellCurveChart distribution={distribution} total={appraisals?.length ?? 0} />
+      <BellCurveChart distribution={distribution} total={rows.length} />
 
       <div className="rounded-md border">
         <table className="w-full text-sm">
@@ -47,7 +55,7 @@ export default async function CalibrationPage({ searchParams }: { searchParams: 
             </tr>
           </thead>
           <tbody>
-            {(appraisals ?? []).map((a: any) => (
+            {rows.map(a => (
               <tr key={a.id} className="border-b">
                 <td className="p-3">{a.users?.full_name}</td>
                 <td className="p-3">{a.users?.department}</td>
@@ -55,15 +63,11 @@ export default async function CalibrationPage({ searchParams }: { searchParams: 
                 <td className="p-3 font-medium">{a.final_rating ?? a.manager_rating}</td>
                 {isCalibrating && (
                   <td className="p-3">
-                    <form action={async (fd: FormData) => { await overrideRating({ data: null, error: null }, fd) }} className="flex gap-2">
-                      <input type="hidden" name="appraisal_id" value={a.id} />
-                      <input type="hidden" name="cycle_id" value={cycleId} />
-                      <select name="final_rating" className="rounded border px-2 py-1 text-sm">
-                        {RATING_TIERS.map(t => <option key={t.code} value={t.code}>{t.code}</option>)}
-                      </select>
-                      <Input name="justification" placeholder="Justification" className="text-sm" required />
-                      <Button size="sm" type="submit">Save</Button>
-                    </form>
+                    <OverrideForm
+                      appraisalId={a.id}
+                      cycleId={cycleId}
+                      currentRating={a.final_rating ?? a.manager_rating}
+                    />
                   </td>
                 )}
               </tr>
@@ -74,12 +78,12 @@ export default async function CalibrationPage({ searchParams }: { searchParams: 
 
       <div className="flex gap-3">
         {isCalibrating && (
-          <form action={async () => { await lockCycle(cycleId!) }}>
+          <form action={async () => { await lockCycle(cycleId) }}>
             <Button variant="destructive" type="submit">Lock Cycle</Button>
           </form>
         )}
         {isLocked && (
-          <form action={async () => { await publishCycle(cycleId!) }}>
+          <form action={async () => { await publishCycle(cycleId) }}>
             <Button type="submit">Publish Cycle</Button>
           </form>
         )}
