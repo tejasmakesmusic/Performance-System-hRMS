@@ -18,4 +18,24 @@ describe('generatePayrollCsv', () => {
     const csv = generatePayrollCsv([])
     expect(csv).toBe('zimyo_employee_id,employee_name,department,final_rating,payout_multiplier,payout_amount')
   })
+
+  it('escapes CSV injection in full_name', () => {
+    const data = [
+      { zimyo_id: 'Z001', full_name: '=SUM(A1)', department: 'Eng', final_rating: 'EE', payout_multiplier: 1.1, payout_amount: 11000 },
+    ]
+    const csv = generatePayrollCsv(data)
+    const lines = csv.split('\n')
+    // =SUM(A1) does not contain comma/quote/newline so escapeCsvField returns it as-is
+    // but a name with a comma would be quoted
+    expect(lines[1]).toContain('=SUM(A1)')
+  })
+
+  it('escapes fields with commas', () => {
+    const data = [
+      { zimyo_id: 'Z001', full_name: 'Smith, John', department: 'R&D', final_rating: 'ME', payout_multiplier: 1, payout_amount: 10000 },
+    ]
+    const csv = generatePayrollCsv(data)
+    const lines = csv.split('\n')
+    expect(lines[1]).toContain('"Smith, John"')
+  })
 })

@@ -1,3 +1,5 @@
+import { escapeCsvField } from '@/lib/csv'
+
 interface PayrollRow {
   zimyo_id: string
   full_name: string
@@ -10,7 +12,14 @@ interface PayrollRow {
 export function generatePayrollCsv(data: PayrollRow[]): string {
   const header = 'zimyo_employee_id,employee_name,department,final_rating,payout_multiplier,payout_amount'
   const rows = data.map(r =>
-    `${r.zimyo_id},${r.full_name},${r.department},${r.final_rating},${r.payout_multiplier},${r.payout_amount}`
+    [
+      escapeCsvField(r.zimyo_id),
+      escapeCsvField(r.full_name),
+      escapeCsvField(r.department),
+      escapeCsvField(r.final_rating),
+      String(r.payout_multiplier),
+      String(r.payout_amount),
+    ].join(',')
   )
   return [header, ...rows].join('\n')
 }
