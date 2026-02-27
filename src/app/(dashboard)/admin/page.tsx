@@ -45,7 +45,7 @@ export default async function AdminCyclesPage() {
                   <td className="p-3">{cycle.year}</td>
                   <td className="p-3">
                     {next && (
-                      <form action={advanceCycleStatus.bind(null, cycle.id, cycle.status)}>
+                      <form action={async () => { await advanceCycleStatus(cycle.id, cycle.status) }}>
                         <Button variant="outline" size="sm" type="submit">
                           Advance to {CYCLE_STATUS_LABELS[next]}
                         </Button>

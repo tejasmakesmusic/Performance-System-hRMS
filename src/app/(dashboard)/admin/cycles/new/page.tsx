@@ -10,7 +10,7 @@ export default async function NewCyclePage() {
   return (
     <div className="max-w-lg space-y-6">
       <h1 className="text-2xl font-bold">Create New Cycle</h1>
-      <form action={createCycle} className="space-y-4">
+      <form action={async (fd: FormData) => { await createCycle({ data: null, error: null }, fd) }} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="name">Cycle Name</Label>
           <Input id="name" name="name" placeholder="Q1 2026" required />
