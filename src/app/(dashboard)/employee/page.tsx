@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { requireRole } from '@/lib/auth'
 import { CycleStatusBadge } from '@/components/cycle-status-badge'
+import { DeadlineBanner } from '@/components/deadline-banner'
 import { SelfReviewForm } from './self-review-form'
 import type { Cycle, Kpi, Review, Appraisal } from '@/lib/types'
 
@@ -34,6 +35,10 @@ export default async function EmployeeReviewPage() {
         <h1 className="text-2xl font-bold">My Review — {cycle.name}</h1>
         <CycleStatusBadge status={cycle.status} />
       </div>
+
+      {isSelfReview && (
+        <DeadlineBanner deadline={cycle.self_review_deadline} label="Self-review" />
+      )}
 
       <section className="space-y-2">
         <h2 className="text-lg font-semibold">My KPIs</h2>

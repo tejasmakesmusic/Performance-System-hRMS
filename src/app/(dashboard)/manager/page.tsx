@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { requireRole } from '@/lib/auth'
 import { Badge } from '@/components/ui/badge'
+import { DeadlineBanner } from '@/components/deadline-banner'
 import Link from 'next/link'
 import type { User, Cycle } from '@/lib/types'
 
@@ -71,6 +72,12 @@ export default async function ManagerTeamPage() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">My Team</h1>
       {!activeCycle && <p className="text-muted-foreground">No active review cycle.</p>}
+      {activeCycle?.status === 'kpi_setting' && (
+        <DeadlineBanner deadline={activeCycle.kpi_setting_deadline} label="KPI setting" />
+      )}
+      {activeCycle?.status === 'manager_review' && (
+        <DeadlineBanner deadline={activeCycle.manager_review_deadline} label="Manager review" />
+      )}
       {employees.length === 0 && <p className="text-muted-foreground">No direct reports found.</p>}
 
       {activeCycle && statuses.length > 0 && (
