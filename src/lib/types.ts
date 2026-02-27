@@ -1,3 +1,5 @@
+export type ActionResult<T = null> = { data: T; error: null } | { data: null; error: string }
+
 export type UserRole = 'employee' | 'manager' | 'hrbp' | 'admin'
 export type CycleStatus = 'draft' | 'kpi_setting' | 'self_review' | 'manager_review' | 'calibrating' | 'locked' | 'published'
 export type RatingTier = 'FEE' | 'EE' | 'ME' | 'SME' | 'BE'
@@ -74,6 +76,7 @@ export interface Appraisal {
   payout_multiplier: number | null
   payout_amount: number | null
   locked_at: string | null
+  is_final: boolean
   created_at: string
   updated_at: string
 }

@@ -13,7 +13,7 @@ export default async function UploadUsersPage() {
       <p className="text-sm text-muted-foreground">
         CSV columns: zimyo_id, email, full_name, department, designation, manager_email
       </p>
-      <form action={uploadUsersCsv} className="space-y-4">
+      <form action={async (fd: FormData) => { await uploadUsersCsv(fd) }} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="file">CSV File</Label>
           <Input id="file" name="file" type="file" accept=".csv" required />
