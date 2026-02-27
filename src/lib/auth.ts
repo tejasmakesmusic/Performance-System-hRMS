@@ -25,6 +25,28 @@ export async function requireRole(allowedRoles: UserRole[]): Promise<User> {
   return user
 }
 
+/** Pure testable check — returns true if user is the manager of the given employee. */
+export function checkManagerOwnership(user: User, managerId: string): boolean {
+  return user.id === managerId
+}
+
+/**
+ * DB-backed ownership check. Fetches the employee and verifies the current manager
+ * owns that record. Redirects to /unauthorized on failure.
+ */
+export async function requireManagerOwnership(employeeId: string, managerId: string): Promise<void> {
+  const supabase = await createClient()
+  const { data: employee } = await supabase
+    .from('users')
+    .select('manager_id')
+    .eq('id', employeeId)
+    .single()
+
+  if (!employee || employee.manager_id !== managerId) {
+    redirect('/unauthorized')
+  }
+}
+
 export function getRoleDashboardPath(role: UserRole): string {
   switch (role) {
     case 'employee': return '/employee'
