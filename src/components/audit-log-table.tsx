@@ -19,9 +19,9 @@ interface AuditLogTableProps {
 const ACTION_GROUPS: Record<string, string[] | null> = {
   'All':        null,
   'User Mgmt':  ['user_created','user_updated','role_change','status_change','magic_link_sent','magic_link_generated','password_reset_sent','zimyo_sync','csv_upload'],
-  'Cycle':      ['cycle_status_changed','lock_cycle','publish_cycle'],
+  'Cycle':      ['cycle_status_changed','cycle_locked','cycle_published','lock_cycle','publish_cycle'],
   'Reviews':    ['review_submitted','kpi_added','kpi_deleted','manager_review_submitted'],
-  'Config':     ['payout_config_updated','department_created','hrbp_departments_updated','override_rating'],
+  'Config':     ['payout_config_updated','department_created','hrbp_departments_updated','override_rating','rating_override'],
 }
 
 export function AuditLogTable({ logs, page, hasMore, baseUrl }: AuditLogTableProps) {

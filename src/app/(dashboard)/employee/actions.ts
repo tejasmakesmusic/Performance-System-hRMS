@@ -28,14 +28,14 @@ export async function submitSelfReview(_prev: ActionResult, formData: FormData):
   const selfRating = formData.get('self_rating') as string
   const selfComments = formData.get('self_comments') as string
 
-  const { error } = await supabase.from('reviews').upsert({
+  const { data: insertedReview, error } = await supabase.from('reviews').upsert({
     cycle_id: cycleId,
     employee_id: user.id,
     self_rating: selfRating || null,
     self_comments: selfComments,
     status: 'submitted',
     submitted_at: new Date().toISOString(),
-  }, { onConflict: 'cycle_id,employee_id' })
+  }, { onConflict: 'cycle_id,employee_id' }).select('id').single()
 
   if (error) return { data: null, error: error.message }
 
@@ -44,7 +44,7 @@ export async function submitSelfReview(_prev: ActionResult, formData: FormData):
     changed_by: user.id,
     action: 'review_submitted',
     entity_type: 'review',
-    entity_id: cycleId,
+    entity_id: insertedReview.id,
     new_value: { cycle_id: cycleId, self_rating: selfRating },
   })
 
