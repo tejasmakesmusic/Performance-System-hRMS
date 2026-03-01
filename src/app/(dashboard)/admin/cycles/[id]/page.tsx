@@ -8,6 +8,14 @@ import { getNextStatus } from '@/lib/cycle-machine'
 import type { Cycle, User, Review, Appraisal } from '@/lib/types'
 import { CycleActionsClient } from './cycle-actions-client'
 
+type PayoutRow = {
+  employee_id: string
+  final_rating: string | null
+  payout_multiplier: number | null
+  payout_amount: number | null
+  users: { full_name: string; base_salary: number; department: { name: string } | null } | null
+}
+
 function daysUntil(d: string | null) {
   if (!d) return null
   return Math.ceil((new Date(d).getTime() - Date.now()) / 86400000)
@@ -41,7 +49,7 @@ export default async function CycleDetailPage({ params }: { params: Promise<{ id
     .eq('cycle_id', id)
     .not('locked_at', 'is', null)
     .order('payout_amount', { ascending: false })
-    .then(r => r.data) : null
+    .then(r => r.data as PayoutRow[] | null) : null
 
   const users = (usersRes.data ?? []) as unknown as Pick<User, 'id' | 'full_name' | 'department' | 'manager_id' | 'role'>[]
   const reviews = (reviewsRes.data ?? []) as Pick<Review, 'employee_id' | 'status'>[]
@@ -154,9 +162,15 @@ export default async function CycleDetailPage({ params }: { params: Promise<{ id
         <div className="rounded-lg border p-5 space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold">Payout Summary</h2>
-            <span className="text-sm text-muted-foreground">
-              Total: ₹{payouts.reduce((s, p) => s + (p.payout_amount ?? 0), 0).toLocaleString('en-IN')}
-            </span>
+            {(() => {
+              const totalPayout = payouts.reduce((s, p) => s + (p.payout_amount ?? 0), 0)
+              return (
+                <span className="text-sm text-muted-foreground">
+                  Total Payout: ₹{totalPayout.toLocaleString('en-IN')}
+                  {(cycle as Cycle).total_budget ? ` / ₹${(cycle as Cycle).total_budget!.toLocaleString('en-IN')} budget` : ''}
+                </span>
+              )
+            })()}
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -172,8 +186,8 @@ export default async function CycleDetailPage({ params }: { params: Promise<{ id
               <tbody>
                 {payouts.map(p => (
                   <tr key={p.employee_id} className="border-b last:border-0">
-                    <td className="py-2">{(p.users as any)?.full_name}</td>
-                    <td className="py-2 text-muted-foreground">{(p.users as any)?.department?.name ?? '—'}</td>
+                    <td className="py-2">{p.users?.full_name}</td>
+                    <td className="py-2 text-muted-foreground">{p.users?.department?.name ?? '—'}</td>
                     <td className="py-2">{p.final_rating ?? '—'}</td>
                     <td className="py-2 text-right">×{p.payout_multiplier?.toFixed(3) ?? '—'}</td>
                     <td className="py-2 text-right font-medium">₹{(p.payout_amount ?? 0).toLocaleString('en-IN')}</td>

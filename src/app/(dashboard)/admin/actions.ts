@@ -33,6 +33,16 @@ export async function createCycle(_prev: ActionResult, formData: FormData): Prom
     ? parseFloat(formData.get('me_multiplier') as string)
     : null
 
+  if (fee_multiplier !== null && !validateMultiplier(fee_multiplier)) {
+    return { data: null, error: "FEE multiplier override must be between 0 and 5" }
+  }
+  if (ee_multiplier !== null && !validateMultiplier(ee_multiplier)) {
+    return { data: null, error: "EE multiplier override must be between 0 and 5" }
+  }
+  if (me_multiplier !== null && !validateMultiplier(me_multiplier)) {
+    return { data: null, error: "ME multiplier override must be between 0 and 5" }
+  }
+
   const { error } = await supabase.from("cycles").insert({
     name: formData.get("name") as string,
     quarter: formData.get("quarter") as string,
