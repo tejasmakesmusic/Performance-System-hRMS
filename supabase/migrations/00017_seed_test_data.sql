@@ -66,3 +66,226 @@ INSERT INTO public.users (id, email, full_name, role, department, designation, m
   ('00000001-0000-0000-0000-000000000009', 'henry@test.com',    'Henry Park',   'employee', 'Product',     'UX Designer',        '00000001-0000-0000-0000-000000000004', 65000),
   ('00000001-0000-0000-0000-000000000010', 'irene@test.com',    'Irene Thomas', 'employee', 'Product',     'Business Analyst',   '00000001-0000-0000-0000-000000000004', 60000)
 ON CONFLICT (id) DO NOTHING;
+
+-- ──────────────────────────────────────────────────────────
+-- SECTION 3: CYCLES
+-- ──────────────────────────────────────────────────────────
+INSERT INTO cycles (
+  id, name, quarter, year, status,
+  kpi_setting_deadline, self_review_deadline, manager_review_deadline, calibration_deadline,
+  sme_multiplier, business_multiplier, total_budget, budget_currency,
+  published_at, created_by
+) VALUES
+  -- Q1 2025: published (fully complete)
+  ('00000002-0000-0000-0000-000000000001',
+   'Annual Review FY2025-Q1', 'Q1', 2025, 'published',
+   '2025-01-20', '2025-02-10', '2025-02-28', '2025-03-10',
+   0.25, 0.9, 500000, 'INR',
+   '2025-03-15 12:00:00+00', '00000001-0000-0000-0000-000000000001'),
+
+  -- Q2 2025: calibrating (manager reviews done, HRBP calibrating)
+  ('00000002-0000-0000-0000-000000000002',
+   'Mid-Year Review FY2025-Q2', 'Q2', 2025, 'calibrating',
+   '2025-04-20', '2025-05-10', '2025-05-28', '2025-06-10',
+   0.25, 1.0, 550000, 'INR',
+   NULL, '00000001-0000-0000-0000-000000000001'),
+
+  -- Q3 2025: manager_review (self-reviews done, managers rating)
+  ('00000002-0000-0000-0000-000000000003',
+   'Q3 Review FY2025', 'Q3', 2025, 'manager_review',
+   '2025-07-20', '2025-08-10', '2025-08-28', '2025-09-10',
+   NULL, 1.0, NULL, 'INR',
+   NULL, '00000001-0000-0000-0000-000000000001'),
+
+  -- Q4 2025: self_review (KPIs set, employees reviewing)
+  ('00000002-0000-0000-0000-000000000004',
+   'Q4 Review FY2025', 'Q4', 2025, 'self_review',
+   '2025-10-20', '2025-11-10', '2025-11-28', '2025-12-10',
+   NULL, 1.0, NULL, 'INR',
+   NULL, '00000001-0000-0000-0000-000000000001'),
+
+  -- Q1 2026: kpi_setting (just started)
+  ('00000002-0000-0000-0000-000000000005',
+   'Q1 Review FY2026', 'Q1', 2026, 'kpi_setting',
+   '2026-01-20', '2026-02-10', '2026-02-28', '2026-03-10',
+   NULL, 1.0, NULL, 'INR',
+   NULL, '00000001-0000-0000-0000-000000000001');
+
+-- ──────────────────────────────────────────────────────────
+-- SECTION 4: KPIs
+-- 3 KPIs per employee, weights 40+35+25=100.
+-- Q1-Q4: all 6 employees. Q1 FY2026: Bob/Dave/Eve only (Alice's team).
+-- ──────────────────────────────────────────────────────────
+INSERT INTO kpis (cycle_id, employee_id, manager_id, title, description, weight) VALUES
+-- ── Q1 2025 (published) ──────────────────────────────────
+  ('00000002-0000-0000-0000-000000000001','00000001-0000-0000-0000-000000000005','00000001-0000-0000-0000-000000000003','Delivery Quality','Maintain high standard across all deliverables',40),
+  ('00000002-0000-0000-0000-000000000001','00000001-0000-0000-0000-000000000005','00000001-0000-0000-0000-000000000003','Collaboration & Communication','Effective teamwork and stakeholder communication',35),
+  ('00000002-0000-0000-0000-000000000001','00000001-0000-0000-0000-000000000005','00000001-0000-0000-0000-000000000003','Learning & Development','Continuous skill growth and knowledge sharing',25),
+
+  ('00000002-0000-0000-0000-000000000001','00000001-0000-0000-0000-000000000006','00000001-0000-0000-0000-000000000003','Delivery Quality','Maintain high standard across all deliverables',40),
+  ('00000002-0000-0000-0000-000000000001','00000001-0000-0000-0000-000000000006','00000001-0000-0000-0000-000000000003','Collaboration & Communication','Effective teamwork and stakeholder communication',35),
+  ('00000002-0000-0000-0000-000000000001','00000001-0000-0000-0000-000000000006','00000001-0000-0000-0000-000000000003','Learning & Development','Continuous skill growth and knowledge sharing',25),
+
+  ('00000002-0000-0000-0000-000000000001','00000001-0000-0000-0000-000000000007','00000001-0000-0000-0000-000000000003','Delivery Quality','Maintain high standard across all deliverables',40),
+  ('00000002-0000-0000-0000-000000000001','00000001-0000-0000-0000-000000000007','00000001-0000-0000-0000-000000000003','Collaboration & Communication','Effective teamwork and stakeholder communication',35),
+  ('00000002-0000-0000-0000-000000000001','00000001-0000-0000-0000-000000000007','00000001-0000-0000-0000-000000000003','Learning & Development','Continuous skill growth and knowledge sharing',25),
+
+  ('00000002-0000-0000-0000-000000000001','00000001-0000-0000-0000-000000000008','00000001-0000-0000-0000-000000000004','Delivery Quality','Maintain high standard across all deliverables',40),
+  ('00000002-0000-0000-0000-000000000001','00000001-0000-0000-0000-000000000008','00000001-0000-0000-0000-000000000004','Collaboration & Communication','Effective teamwork and stakeholder communication',35),
+  ('00000002-0000-0000-0000-000000000001','00000001-0000-0000-0000-000000000008','00000001-0000-0000-0000-000000000004','Learning & Development','Continuous skill growth and knowledge sharing',25),
+
+  ('00000002-0000-0000-0000-000000000001','00000001-0000-0000-0000-000000000009','00000001-0000-0000-0000-000000000004','Delivery Quality','Maintain high standard across all deliverables',40),
+  ('00000002-0000-0000-0000-000000000001','00000001-0000-0000-0000-000000000009','00000001-0000-0000-0000-000000000004','Collaboration & Communication','Effective teamwork and stakeholder communication',35),
+  ('00000002-0000-0000-0000-000000000001','00000001-0000-0000-0000-000000000009','00000001-0000-0000-0000-000000000004','Learning & Development','Continuous skill growth and knowledge sharing',25),
+
+  ('00000002-0000-0000-0000-000000000001','00000001-0000-0000-0000-000000000010','00000001-0000-0000-0000-000000000004','Delivery Quality','Maintain high standard across all deliverables',40),
+  ('00000002-0000-0000-0000-000000000001','00000001-0000-0000-0000-000000000010','00000001-0000-0000-0000-000000000004','Collaboration & Communication','Effective teamwork and stakeholder communication',35),
+  ('00000002-0000-0000-0000-000000000001','00000001-0000-0000-0000-000000000010','00000001-0000-0000-0000-000000000004','Learning & Development','Continuous skill growth and knowledge sharing',25),
+
+-- ── Q2 2025 (calibrating) ────────────────────────────────
+  ('00000002-0000-0000-0000-000000000002','00000001-0000-0000-0000-000000000005','00000001-0000-0000-0000-000000000003','Delivery Quality','Maintain high standard across all deliverables',40),
+  ('00000002-0000-0000-0000-000000000002','00000001-0000-0000-0000-000000000005','00000001-0000-0000-0000-000000000003','Collaboration & Communication','Effective teamwork and stakeholder communication',35),
+  ('00000002-0000-0000-0000-000000000002','00000001-0000-0000-0000-000000000005','00000001-0000-0000-0000-000000000003','Learning & Development','Continuous skill growth and knowledge sharing',25),
+
+  ('00000002-0000-0000-0000-000000000002','00000001-0000-0000-0000-000000000006','00000001-0000-0000-0000-000000000003'
+
+-- ──────────────────────────────────────────────────────────
+-- SECTION 3: CYCLES
+-- ──────────────────────────────────────────────────────────
+INSERT INTO cycles (
+  id, name, quarter, year, status,
+  kpi_setting_deadline, self_review_deadline, manager_review_deadline, calibration_deadline,
+  sme_multiplier, business_multiplier, total_budget, budget_currency,
+  published_at, created_by
+) VALUES
+  -- Q1 2025: published (fully complete)
+  ('00000002-0000-0000-0000-000000000001',
+   'Annual Review FY2025-Q1', 'Q1', 2025, 'published',
+   '2025-01-20', '2025-02-10', '2025-02-28', '2025-03-10',
+   0.25, 0.9, 500000, 'INR',
+   '2025-03-15 12:00:00+00', '00000001-0000-0000-0000-000000000001'),
+
+  -- Q2 2025: calibrating (manager reviews done, HRBP calibrating)
+  ('00000002-0000-0000-0000-000000000002',
+   'Mid-Year Review FY2025-Q2', 'Q2', 2025, 'calibrating',
+   '2025-04-20', '2025-05-10', '2025-05-28', '2025-06-10',
+   0.25, 1.0, 550000, 'INR',
+   NULL, '00000001-0000-0000-0000-000000000001'),
+
+  -- Q3 2025: manager_review (self-reviews done, managers rating)
+  ('00000002-0000-0000-0000-000000000003',
+   'Q3 Review FY2025', 'Q3', 2025, 'manager_review',
+   '2025-07-20', '2025-08-10', '2025-08-28', '2025-09-10',
+   NULL, 1.0, NULL, 'INR',
+   NULL, '00000001-0000-0000-0000-000000000001'),
+
+  -- Q4 2025: self_review (KPIs set, employees reviewing)
+  ('00000002-0000-0000-0000-000000000004',
+   'Q4 Review FY2025', 'Q4', 2025, 'self_review',
+   '2025-10-20', '2025-11-10', '2025-11-28', '2025-12-10',
+   NULL, 1.0, NULL, 'INR',
+   NULL, '00000001-0000-0000-0000-000000000001'),
+
+  -- Q1 2026: kpi_setting (just started)
+  ('00000002-0000-0000-0000-000000000005',
+   'Q1 Review FY2026', 'Q1', 2026, 'kpi_setting',
+   '2026-01-20', '2026-02-10', '2026-02-28', '2026-03-10',
+   NULL, 1.0, NULL, 'INR',
+   NULL, '00000001-0000-0000-0000-000000000001');
+
+-- ──────────────────────────────────────────────────────────
+-- SECTION 4: KPIs
+-- 3 KPIs per employee, weights 40+35+25=100.
+-- Q1-Q4: all 6 employees. Q1 FY2026: Bob/Dave/Eve only (Alice's team).
+-- ──────────────────────────────────────────────────────────
+INSERT INTO kpis (cycle_id, employee_id, manager_id, title, description, weight) VALUES
+-- ── Q1 2025 (published) ──────────────────────────────────,
+  ('00000002-0000-0000-0000-000000000001','00000001-0000-0000-0000-000000000005','00000001-0000-0000-0000-000000000003','Delivery Quality','Maintain high standard across all deliverables',40),
+  ('00000002-0000-0000-0000-000000000001','00000001-0000-0000-0000-000000000005','00000001-0000-0000-0000-000000000003','Collaboration & Communication','Effective teamwork and stakeholder communication',35),
+  ('00000002-0000-0000-0000-000000000001','00000001-0000-0000-0000-000000000005','00000001-0000-0000-0000-000000000003','Learning & Development','Continuous skill growth and knowledge sharing',25),
+  ('00000002-0000-0000-0000-000000000001','00000001-0000-0000-0000-000000000006','00000001-0000-0000-0000-000000000003','Delivery Quality','Maintain high standard across all deliverables',40),
+  ('00000002-0000-0000-0000-000000000001','00000001-0000-0000-0000-000000000006','00000001-0000-0000-0000-000000000003','Collaboration & Communication','Effective teamwork and stakeholder communication',35),
+  ('00000002-0000-0000-0000-000000000001','00000001-0000-0000-0000-000000000006','00000001-0000-0000-0000-000000000003','Learning & Development','Continuous skill growth and knowledge sharing',25),
+  ('00000002-0000-0000-0000-000000000001','00000001-0000-0000-0000-000000000007','00000001-0000-0000-0000-000000000003','Delivery Quality','Maintain high standard across all deliverables',40),
+  ('00000002-0000-0000-0000-000000000001','00000001-0000-0000-0000-000000000007','00000001-0000-0000-0000-000000000003','Collaboration & Communication','Effective teamwork and stakeholder communication',35),
+  ('00000002-0000-0000-0000-000000000001','00000001-0000-0000-0000-000000000007','00000001-0000-0000-0000-000000000003','Learning & Development','Continuous skill growth and knowledge sharing',25),
+  ('00000002-0000-0000-0000-000000000001','00000001-0000-0000-0000-000000000008','00000001-0000-0000-0000-000000000004','Delivery Quality','Maintain high standard across all deliverables',40),
+  ('00000002-0000-0000-0000-000000000001','00000001-0000-0000-0000-000000000008','00000001-0000-0000-0000-000000000004','Collaboration & Communication','Effective teamwork and stakeholder communication',35),
+  ('00000002-0000-0000-0000-000000000001','00000001-0000-0000-0000-000000000008','00000001-0000-0000-0000-000000000004','Learning & Development','Continuous skill growth and knowledge sharing',25),
+  ('00000002-0000-0000-0000-000000000001','00000001-0000-0000-0000-000000000009','00000001-0000-0000-0000-000000000004','Delivery Quality','Maintain high standard across all deliverables',40),
+  ('00000002-0000-0000-0000-000000000001','00000001-0000-0000-0000-000000000009','00000001-0000-0000-0000-000000000004','Collaboration & Communication','Effective teamwork and stakeholder communication',35),
+  ('00000002-0000-0000-0000-000000000001','00000001-0000-0000-0000-000000000009','00000001-0000-0000-0000-000000000004','Learning & Development','Continuous skill growth and knowledge sharing',25),
+  ('00000002-0000-0000-0000-000000000001','00000001-0000-0000-0000-000000000010','00000001-0000-0000-0000-000000000004','Delivery Quality','Maintain high standard across all deliverables',40),
+  ('00000002-0000-0000-0000-000000000001','00000001-0000-0000-0000-000000000010','00000001-0000-0000-0000-000000000004','Collaboration & Communication','Effective teamwork and stakeholder communication',35),
+  ('00000002-0000-0000-0000-000000000001','00000001-0000-0000-0000-000000000010','00000001-0000-0000-0000-000000000004','Learning & Development','Continuous skill growth and knowledge sharing',25),
+
+-- ── Q2 2025 (calibrating) ────────────────────────────────,
+  ('00000002-0000-0000-0000-000000000002','00000001-0000-0000-0000-000000000005','00000001-0000-0000-0000-000000000003','Delivery Quality','Maintain high standard across all deliverables',40),
+  ('00000002-0000-0000-0000-000000000002','00000001-0000-0000-0000-000000000005','00000001-0000-0000-0000-000000000003','Collaboration & Communication','Effective teamwork and stakeholder communication',35),
+  ('00000002-0000-0000-0000-000000000002','00000001-0000-0000-0000-000000000005','00000001-0000-0000-0000-000000000003','Learning & Development','Continuous skill growth and knowledge sharing',25),
+  ('00000002-0000-0000-0000-000000000002','00000001-0000-0000-0000-000000000006','00000001-0000-0000-0000-000000000003','Delivery Quality','Maintain high standard across all deliverables',40),
+  ('00000002-0000-0000-0000-000000000002','00000001-0000-0000-0000-000000000006','00000001-0000-0000-0000-000000000003','Collaboration & Communication','Effective teamwork and stakeholder communication',35),
+  ('00000002-0000-0000-0000-000000000002','00000001-0000-0000-0000-000000000006','00000001-0000-0000-0000-000000000003','Learning & Development','Continuous skill growth and knowledge sharing',25),
+  ('00000002-0000-0000-0000-000000000002','00000001-0000-0000-0000-000000000007','00000001-0000-0000-0000-000000000003','Delivery Quality','Maintain high standard across all deliverables',40),
+  ('00000002-0000-0000-0000-000000000002','00000001-0000-0000-0000-000000000007','00000001-0000-0000-0000-000000000003','Collaboration & Communication','Effective teamwork and stakeholder communication',35),
+  ('00000002-0000-0000-0000-000000000002','00000001-0000-0000-0000-000000000007','00000001-0000-0000-0000-000000000003','Learning & Development','Continuous skill growth and knowledge sharing',25),
+  ('00000002-0000-0000-0000-000000000002','00000001-0000-0000-0000-000000000008','00000001-0000-0000-0000-000000000004','Delivery Quality','Maintain high standard across all deliverables',40),
+  ('00000002-0000-0000-0000-000000000002','00000001-0000-0000-0000-000000000008','00000001-0000-0000-0000-000000000004','Collaboration & Communication','Effective teamwork and stakeholder communication',35),
+  ('00000002-0000-0000-0000-000000000002','00000001-0000-0000-0000-000000000008','00000001-0000-0000-0000-000000000004','Learning & Development','Continuous skill growth and knowledge sharing',25),
+  ('00000002-0000-0000-0000-000000000002','00000001-0000-0000-0000-000000000009','00000001-0000-0000-0000-000000000004','Delivery Quality','Maintain high standard across all deliverables',40),
+  ('00000002-0000-0000-0000-000000000002','00000001-0000-0000-0000-000000000009','00000001-0000-0000-0000-000000000004','Collaboration & Communication','Effective teamwork and stakeholder communication',35),
+  ('00000002-0000-0000-0000-000000000002','00000001-0000-0000-0000-000000000009','00000001-0000-0000-0000-000000000004','Learning & Development','Continuous skill growth and knowledge sharing',25),
+  ('00000002-0000-0000-0000-000000000002','00000001-0000-0000-0000-000000000010','00000001-0000-0000-0000-000000000004','Delivery Quality','Maintain high standard across all deliverables',40),
+  ('00000002-0000-0000-0000-000000000002','00000001-0000-0000-0000-000000000010','00000001-0000-0000-0000-000000000004','Collaboration & Communication','Effective teamwork and stakeholder communication',35),
+  ('00000002-0000-0000-0000-000000000002','00000001-0000-0000-0000-000000000010','00000001-0000-0000-0000-000000000004','Learning & Development','Continuous skill growth and knowledge sharing',25),
+
+-- ── Q3 2025 (manager_review) ─────────────────────────────,
+  ('00000002-0000-0000-0000-000000000003','00000001-0000-0000-0000-000000000005','00000001-0000-0000-0000-000000000003','Delivery Quality','Maintain high standard across all deliverables',40),
+  ('00000002-0000-0000-0000-000000000003','00000001-0000-0000-0000-000000000005','00000001-0000-0000-0000-000000000003','Collaboration & Communication','Effective teamwork and stakeholder communication',35),
+  ('00000002-0000-0000-0000-000000000003','00000001-0000-0000-0000-000000000005','00000001-0000-0000-0000-000000000003','Learning & Development','Continuous skill growth and knowledge sharing',25),
+  ('00000002-0000-0000-0000-000000000003','00000001-0000-0000-0000-000000000006','00000001-0000-0000-0000-000000000003','Delivery Quality','Maintain high standard across all deliverables',40),
+  ('00000002-0000-0000-0000-000000000003','00000001-0000-0000-0000-000000000006','00000001-0000-0000-0000-000000000003','Collaboration & Communication','Effective teamwork and stakeholder communication',35),
+  ('00000002-0000-0000-0000-000000000003','00000001-0000-0000-0000-000000000006','00000001-0000-0000-0000-000000000003','Learning & Development','Continuous skill growth and knowledge sharing',25),
+  ('00000002-0000-0000-0000-000000000003','00000001-0000-0000-0000-000000000007','00000001-0000-0000-0000-000000000003','Delivery Quality','Maintain high standard across all deliverables',40),
+  ('00000002-0000-0000-0000-000000000003','00000001-0000-0000-0000-000000000007','00000001-0000-0000-0000-000000000003','Collaboration & Communication','Effective teamwork and stakeholder communication',35),
+  ('00000002-0000-0000-0000-000000000003','00000001-0000-0000-0000-000000000007','00000001-0000-0000-0000-000000000003','Learning & Development','Continuous skill growth and knowledge sharing',25),
+  ('00000002-0000-0000-0000-000000000003','00000001-0000-0000-0000-000000000008','00000001-0000-0000-0000-000000000004','Delivery Quality','Maintain high standard across all deliverables',40),
+  ('00000002-0000-0000-0000-000000000003','00000001-0000-0000-0000-000000000008','00000001-0000-0000-0000-000000000004','Collaboration & Communication','Effective teamwork and stakeholder communication',35),
+  ('00000002-0000-0000-0000-000000000003','00000001-0000-0000-0000-000000000008','00000001-0000-0000-0000-000000000004','Learning & Development','Continuous skill growth and knowledge sharing',25),
+  ('00000002-0000-0000-0000-000000000003','00000001-0000-0000-0000-000000000009','00000001-0000-0000-0000-000000000004','Delivery Quality','Maintain high standard across all deliverables',40),
+  ('00000002-0000-0000-0000-000000000003','00000001-0000-0000-0000-000000000009','00000001-0000-0000-0000-000000000004','Collaboration & Communication','Effective teamwork and stakeholder communication',35),
+  ('00000002-0000-0000-0000-000000000003','00000001-0000-0000-0000-000000000009','00000001-0000-0000-0000-000000000004','Learning & Development','Continuous skill growth and knowledge sharing',25),
+  ('00000002-0000-0000-0000-000000000003','00000001-0000-0000-0000-000000000010','00000001-0000-0000-0000-000000000004','Delivery Quality','Maintain high standard across all deliverables',40),
+  ('00000002-0000-0000-0000-000000000003','00000001-0000-0000-0000-000000000010','00000001-0000-0000-0000-000000000004','Collaboration & Communication','Effective teamwork and stakeholder communication',35),
+  ('00000002-0000-0000-0000-000000000003','00000001-0000-0000-0000-000000000010','00000001-0000-0000-0000-000000000004','Learning & Development','Continuous skill growth and knowledge sharing',25),
+
+-- ── Q4 2025 (self_review) ────────────────────────────────,
+  ('00000002-0000-0000-0000-000000000004','00000001-0000-0000-0000-000000000005','00000001-0000-0000-0000-000000000003','Delivery Quality','Maintain high standard across all deliverables',40),
+  ('00000002-0000-0000-0000-000000000004','00000001-0000-0000-0000-000000000005','00000001-0000-0000-0000-000000000003','Collaboration & Communication','Effective teamwork and stakeholder communication',35),
+  ('00000002-0000-0000-0000-000000000004','00000001-0000-0000-0000-000000000005','00000001-0000-0000-0000-000000000003','Learning & Development','Continuous skill growth and knowledge sharing',25),
+  ('00000002-0000-0000-0000-000000000004','00000001-0000-0000-0000-000000000006','00000001-0000-0000-0000-000000000003','Delivery Quality','Maintain high standard across all deliverables',40),
+  ('00000002-0000-0000-0000-000000000004','00000001-0000-0000-0000-000000000006','00000001-0000-0000-0000-000000000003','Collaboration & Communication','Effective teamwork and stakeholder communication',35),
+  ('00000002-0000-0000-0000-000000000004','00000001-0000-0000-0000-000000000006','00000001-0000-0000-0000-000000000003','Learning & Development','Continuous skill growth and knowledge sharing',25),
+  ('00000002-0000-0000-0000-000000000004','00000001-0000-0000-0000-000000000007','00000001-0000-0000-0000-000000000003','Delivery Quality','Maintain high standard across all deliverables',40),
+  ('00000002-0000-0000-0000-000000000004','00000001-0000-0000-0000-000000000007','00000001-0000-0000-0000-000000000003','Collaboration & Communication','Effective teamwork and stakeholder communication',35),
+  ('00000002-0000-0000-0000-000000000004','00000001-0000-0000-0000-000000000007','00000001-0000-0000-0000-000000000003','Learning & Development','Continuous skill growth and knowledge sharing',25),
+  ('00000002-0000-0000-0000-000000000004','00000001-0000-0000-0000-000000000008','00000001-0000-0000-0000-000000000004','Delivery Quality','Maintain high standard across all deliverables',40),
+  ('00000002-0000-0000-0000-000000000004','00000001-0000-0000-0000-000000000008','00000001-0000-0000-0000-000000000004','Collaboration & Communication','Effective teamwork and stakeholder communication',35),
+  ('00000002-0000-0000-0000-000000000004','00000001-0000-0000-0000-000000000008','00000001-0000-0000-0000-000000000004','Learning & Development','Continuous skill growth and knowledge sharing',25),
+  ('00000002-0000-0000-0000-000000000004','00000001-0000-0000-0000-000000000009','00000001-0000-0000-0000-000000000004','Delivery Quality','Maintain high standard across all deliverables',40),
+  ('00000002-0000-0000-0000-000000000004','00000001-0000-0000-0000-000000000009','00000001-0000-0000-0000-000000000004','Collaboration & Communication','Effective teamwork and stakeholder communication',35),
+  ('00000002-0000-0000-0000-000000000004','00000001-0000-0000-0000-000000000009','00000001-0000-0000-0000-000000000004','Learning & Development','Continuous skill growth and knowledge sharing',25),
+  ('00000002-0000-0000-0000-000000000004','00000001-0000-0000-0000-000000000010','00000001-0000-0000-0000-000000000004','Delivery Quality','Maintain high standard across all deliverables',40),
+  ('00000002-0000-0000-0000-000000000004','00000001-0000-0000-0000-000000000010','00000001-0000-0000-0000-000000000004','Collaboration & Communication','Effective teamwork and stakeholder communication',35),
+  ('00000002-0000-0000-0000-000000000004','00000001-0000-0000-0000-000000000010','00000001-0000-0000-0000-000000000004','Learning & Development','Continuous skill growth and knowledge sharing',25),
+
+-- ── Q1 2026 (kpi_setting) — Alice's team only ————————,
+  ('00000002-0000-0000-0000-000000000005','00000001-0000-0000-0000-000000000005','00000001-0000-0000-0000-000000000003','Delivery Quality','Maintain high standard across all deliverables',40),
+  ('00000002-0000-0000-0000-000000000005','00000001-0000-0000-0000-000000000005','00000001-0000-0000-0000-000000000003','Collaboration & Communication','Effective teamwork and stakeholder communication',35),
+  ('00000002-0000-0000-0000-000000000005','00000001-0000-0000-0000-000000000005','00000001-0000-0000-0000-000000000003','Learning & Development','Continuous skill growth and knowledge sharing',25),
+  ('00000002-0000-0000-0000-000000000005','00000001-0000-0000-0000-000000000006','00000001-0000-0000-0000-000000000003','Delivery Quality','Maintain high standard across all deliverables',40),
+  ('00000002-0000-0000-0000-000000000005','00000001-0000-0000-0000-000000000006','00000001-0000-0000-0000-000000000003','Collaboration & Communication','Effective teamwork and stakeholder communication',35),
+  ('00000002-0000-0000-0000-000000000005','00000001-0000-0000-0000-000000000006','00000001-0000-0000-0000-000000000003','Learning & Development','Continuous skill growth and knowledge sharing',25),
+  ('00000002-0000-0000-0000-000000000005','00000001-0000-0000-0000-000000000007','00000001-0000-0000-0000-000000000003','Delivery Quality','Maintain high standard across all deliverables',40),
+  ('00000002-0000-0000-0000-000000000005','00000001-0000-0000-0000-000000000007','00000001-0000-0000-0000-000000000003','Collaboration & Communication','Effective teamwork and stakeholder communication',35),
+  ('00000002-0000-0000-0000-000000000005','00000001-0000-0000-0000-000000000007','00000001-0000-0000-0000-000000000003','Learning & Development','Continuous skill growth and knowledge sharing',25);
