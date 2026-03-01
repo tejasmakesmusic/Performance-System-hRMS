@@ -31,7 +31,7 @@ export function OverrideForm({ appraisalId, cycleId, currentRating }: OverrideFo
           {RATING_TIERS.map(t => <option key={t.code} value={t.code}>{t.code}</option>)}
         </select>
         <Input name="justification" placeholder="Justification" className="text-sm" required />
-        <SubmitButton size="sm" pendingLabel="Saving...">Save</SubmitButton>
+        <SubmitButton size="sm" pendingLabel="Saving override…">Save</SubmitButton>
       </form>
       {state.error && (
         <p className="text-xs text-destructive">{state.error}</p>

@@ -60,7 +60,7 @@ export function ReviewForm({ cycleId, employeeId, defaultRating, defaultComments
         />
       </div>
 
-      <SubmitButton pendingLabel="Submitting…">Submit Rating</SubmitButton>
+      <SubmitButton pendingLabel="Submitting your rating…">Submit Rating</SubmitButton>
     </form>
   )
 }

@@ -86,7 +86,7 @@ export function TemplateForm({ action, defaultValues = {} }: Props) {
 
       <div className="flex gap-3 pt-2">
         <Link href="/admin/kpi-templates"><Button type="button" variant="outline">Cancel</Button></Link>
-        <SubmitButton>Save Template</SubmitButton>
+        <SubmitButton pendingLabel="Saving template…">Save Template</SubmitButton>
       </div>
     </form>
   )

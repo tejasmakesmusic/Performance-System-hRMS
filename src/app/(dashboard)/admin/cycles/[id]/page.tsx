@@ -78,12 +78,12 @@ export default async function CycleDetailPage({ params }: { params: Promise<{ id
         <h2 className="font-semibold text-sm">Send Reminders</h2>
         <div className="flex gap-3 flex-wrap">
           <form action={sendSelfReviewReminders.bind(null, id) as unknown as (fd: FormData) => Promise<void>}>
-            <SubmitButton variant="outline" size="sm" disabled={pendingSelfReviews === 0}>
+            <SubmitButton variant="outline" size="sm" disabled={pendingSelfReviews === 0} pendingLabel="Notifying employees…">
               Remind {pendingSelfReviews} pending self-review{pendingSelfReviews !== 1 ? 's' : ''}
             </SubmitButton>
           </form>
           <form action={sendManagerReviewReminders.bind(null, id) as unknown as (fd: FormData) => Promise<void>}>
-            <SubmitButton variant="outline" size="sm" disabled={pendingManagerReviews === 0}>
+            <SubmitButton variant="outline" size="sm" disabled={pendingManagerReviews === 0} pendingLabel="Notifying managers…">
               Remind {pendingManagerReviews} pending manager review{pendingManagerReviews !== 1 ? 's' : ''}
             </SubmitButton>
           </form>

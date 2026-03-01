@@ -245,7 +245,7 @@ export default function UploadUsersPage() {
 
           <div className="flex gap-3 pt-2">
             <Button type="button" variant="outline" onClick={reset}>← Back</Button>
-            <SubmitButton pendingLabel="Importing...">Import {source === 'sheets' ? 'from Sheet' : 'CSV'}</SubmitButton>
+            <SubmitButton pendingLabel="Importing users…">Import {source === 'sheets' ? 'from Sheet' : 'CSV'}</SubmitButton>
           </div>
         </form>
       </div>

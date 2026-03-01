@@ -104,7 +104,7 @@ export function SelfReviewForm({ cycleId, review }: SelfReviewFormProps) {
           <SubmitButton formAction={draftAction} variant="outline" pendingLabel="Saving…">
             Save Draft
           </SubmitButton>
-          <SubmitButton formAction={submitAction} pendingLabel="Submitting…">
+          <SubmitButton formAction={submitAction} pendingLabel="Saving your review…">
             Submit
           </SubmitButton>
         </div>

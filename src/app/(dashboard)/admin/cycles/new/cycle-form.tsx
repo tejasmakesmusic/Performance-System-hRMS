@@ -77,7 +77,7 @@ export function CycleForm() {
         </div>
       </div>
 
-      <SubmitButton pendingLabel="Creating...">Create Cycle</SubmitButton>
+      <SubmitButton pendingLabel="Creating cycle…">Create Cycle</SubmitButton>
     </form>
   )
 }
