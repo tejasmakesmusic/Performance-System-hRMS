@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { requireRole } from '@/lib/auth'
 import { revalidatePath } from 'next/cache'
 import type { ActionResult } from '@/lib/types'
@@ -38,6 +38,15 @@ export async function submitSelfReview(_prev: ActionResult, formData: FormData):
   }, { onConflict: 'cycle_id,employee_id' })
 
   if (error) return { data: null, error: error.message }
+
+  const svc = await createServiceClient()
+  await svc.from('audit_logs').insert({
+    changed_by: user.id,
+    action: 'review_submitted',
+    entity_type: 'review',
+    entity_id: cycleId,
+    new_value: { cycle_id: cycleId, self_rating: selfRating },
+  })
 
   // Notify the manager that the employee submitted their self-review
   const { data: employee } = await supabase.from('users').select('manager_id').eq('id', user.id).single()

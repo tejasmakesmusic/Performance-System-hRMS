@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { requireRole, requireManagerOwnership } from '@/lib/auth'
 import { validateWeight } from '@/lib/validate'
 import { revalidatePath } from 'next/cache'
@@ -18,17 +18,30 @@ export async function addKpi(formData: FormData): Promise<ActionResult> {
     return { data: null, error: 'Weight must be between 1 and 100' }
   }
 
+  const title = formData.get('title') as string
+  const cycleId = formData.get('cycle_id') as string
+
   const supabase = await createClient()
-  const { error } = await supabase.from('kpis').insert({
-    cycle_id: formData.get('cycle_id') as string,
+  const { data: insertedKpi, error } = await supabase.from('kpis').insert({
+    cycle_id: cycleId,
     employee_id: employeeId,
     manager_id: user.id,
-    title: formData.get('title') as string,
+    title,
     description: (formData.get('description') as string) || null,
     weight,
-  })
+  }).select('id').single()
 
   if (error) return { data: null, error: error.message }
+
+  const svc = await createServiceClient()
+  await svc.from('audit_logs').insert({
+    changed_by: user.id,
+    action: 'kpi_added',
+    entity_type: 'kpi',
+    entity_id: insertedKpi.id,
+    new_value: { title, employee_id: employeeId, cycle_id: cycleId },
+  })
+
   revalidatePath(`/manager/${employeeId}/kpis`)
   return { data: null, error: null }
 }
@@ -39,6 +52,16 @@ export async function deleteKpi(kpiId: string, employeeId: string): Promise<Acti
   const supabase = await createClient()
   const { error } = await supabase.from('kpis').delete().eq('id', kpiId)
   if (error) return { data: null, error: error.message }
+
+  const svc = await createServiceClient()
+  await svc.from('audit_logs').insert({
+    changed_by: user.id,
+    action: 'kpi_deleted',
+    entity_type: 'kpi',
+    entity_id: kpiId,
+    old_value: { kpi_id: kpiId },
+  })
+
   revalidatePath(`/manager/${employeeId}/kpis`)
   return { data: null, error: null }
 }

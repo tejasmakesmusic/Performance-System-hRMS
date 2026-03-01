@@ -1,5 +1,9 @@
+'use client'
+
+import { useState } from 'react'
 import Link from 'next/link'
 import type { AuditLog } from '@/lib/types'
+import { cn } from '@/lib/utils'
 
 interface AuditLogRow extends AuditLog {
   users?: { full_name: string } | null
@@ -12,12 +16,41 @@ interface AuditLogTableProps {
   baseUrl: string
 }
 
+const ACTION_GROUPS: Record<string, string[] | null> = {
+  'All':        null,
+  'User Mgmt':  ['user_created','user_updated','role_change','status_change','magic_link_sent','magic_link_generated','password_reset_sent','zimyo_sync','csv_upload'],
+  'Cycle':      ['cycle_status_changed','lock_cycle','publish_cycle'],
+  'Reviews':    ['review_submitted','kpi_added','kpi_deleted','manager_review_submitted'],
+  'Config':     ['payout_config_updated','department_created','hrbp_departments_updated','override_rating'],
+}
+
 export function AuditLogTable({ logs, page, hasMore, baseUrl }: AuditLogTableProps) {
+  const [filter, setFilter] = useState<string>('All')
+
   const prevUrl = page > 1 ? `${baseUrl}?page=${page - 1}` : null
   const nextUrl = hasMore ? `${baseUrl}?page=${page + 1}` : null
 
+  const filteredLogs = filter === 'All'
+    ? logs
+    : logs.filter(l => ACTION_GROUPS[filter]?.includes(l.action) ?? false)
+
   return (
     <div className="space-y-4">
+      <div className="flex gap-2 flex-wrap mb-4">
+        {Object.keys(ACTION_GROUPS).map(g => (
+          <button
+            key={g}
+            onClick={() => setFilter(g)}
+            className={cn(
+              'rounded-full px-3 py-1 text-xs font-medium transition-colors',
+              filter === g ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'
+            )}
+          >
+            {g}
+          </button>
+        ))}
+      </div>
+
       <div className="rounded-md border">
         <table className="w-full text-sm">
           <thead>
@@ -30,12 +63,12 @@ export function AuditLogTable({ logs, page, hasMore, baseUrl }: AuditLogTablePro
             </tr>
           </thead>
           <tbody>
-            {logs.length === 0 && (
+            {filteredLogs.length === 0 && (
               <tr>
                 <td colSpan={5} className="p-3 text-center text-muted-foreground">No audit log entries.</td>
               </tr>
             )}
-            {logs.map(log => (
+            {filteredLogs.map(log => (
               <tr key={log.id} className="border-b">
                 <td className="p-3 text-xs">{new Date(log.created_at).toLocaleString()}</td>
                 <td className="p-3">{log.users?.full_name ?? 'System'}</td>

@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { requireRole } from '@/lib/auth'
 import { canTransition, getTransitionRequirements } from '@/lib/cycle-machine'
 import { validateMultiplier } from '@/lib/validate'
@@ -108,10 +108,10 @@ export async function advanceCycleStatus(cycleId: string, currentStatus: CycleSt
     return { data: null, error: "Cycle status has already been changed by another user — please refresh" }
   }
 
-  await supabase.from("audit_logs").insert({
-    cycle_id: cycleId,
+  const svc = await createServiceClient()
+  await svc.from("audit_logs").insert({
     changed_by: user.id,
-    action: "cycle_status_change",
+    action: "cycle_status_changed",
     entity_type: "cycle",
     entity_id: cycleId,
     old_value: { status: currentStatus },
