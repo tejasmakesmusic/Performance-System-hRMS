@@ -21,11 +21,27 @@ export default async function CycleDetailPage({ params }: { params: Promise<{ id
   const { data: cycle } = await supabase.from('cycles').select('*').eq('id', id).single()
   if (!cycle) notFound()
 
+  const isLockedOrPublished = (cycle as Cycle).status === 'locked' || (cycle as Cycle).status === 'published'
+
   const [usersRes, reviewsRes, appraisalsRes] = await Promise.all([
     supabase.from('users').select('id, full_name, department:departments(name), manager_id, role').eq('is_active', true).neq('role', 'admin').neq('role', 'hrbp'),
     supabase.from('reviews').select('employee_id, status').eq('cycle_id', id),
     supabase.from('appraisals').select('employee_id, manager_id, manager_submitted_at, final_rating').eq('cycle_id', id),
   ])
+
+  const payouts = isLockedOrPublished ? await supabase
+    .from('appraisals')
+    .select(`
+      employee_id,
+      final_rating,
+      payout_multiplier,
+      payout_amount,
+      users!appraisals_employee_id_fkey(full_name, department:departments(name))
+    `)
+    .eq('cycle_id', id)
+    .not('locked_at', 'is', null)
+    .order('payout_amount', { ascending: false })
+    .then(r => r.data) : null
 
   const users = (usersRes.data ?? []) as unknown as Pick<User, 'id' | 'full_name' | 'department' | 'manager_id' | 'role'>[]
   const reviews = (reviewsRes.data ?? []) as Pick<Review, 'employee_id' | 'status'>[]
@@ -71,6 +87,18 @@ export default async function CycleDetailPage({ params }: { params: Promise<{ id
           pendingManagerCount={pendingManagerReviews}
         />
       </div>
+
+      {/* Per-cycle multiplier overrides */}
+      {((cycle as Cycle).fee_multiplier != null || (cycle as Cycle).ee_multiplier != null || (cycle as Cycle).me_multiplier != null) && (
+        <div className="text-sm">
+          <p className="text-xs font-semibold text-muted-foreground mb-1">Per-cycle multiplier overrides:</p>
+          <div className="flex gap-4">
+            {(cycle as Cycle).fee_multiplier != null && <span>FEE: ×{(cycle as Cycle).fee_multiplier}</span>}
+            {(cycle as Cycle).ee_multiplier != null && <span>EE: ×{(cycle as Cycle).ee_multiplier}</span>}
+            {(cycle as Cycle).me_multiplier != null && <span>ME: ×{(cycle as Cycle).me_multiplier}</span>}
+          </div>
+        </div>
+      )}
 
       {/* Per-employee table */}
       <div className="rounded-md border">
@@ -121,6 +149,41 @@ export default async function CycleDetailPage({ params }: { params: Promise<{ id
           </tbody>
         </table>
       </div>
+      {/* Payout summary table */}
+      {isLockedOrPublished && payouts && payouts.length > 0 && (
+        <div className="rounded-lg border p-5 space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold">Payout Summary</h2>
+            <span className="text-sm text-muted-foreground">
+              Total: ₹{payouts.reduce((s, p) => s + (p.payout_amount ?? 0), 0).toLocaleString('en-IN')}
+            </span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left pb-2 text-xs font-semibold text-muted-foreground">Employee</th>
+                  <th className="text-left pb-2 text-xs font-semibold text-muted-foreground">Dept</th>
+                  <th className="text-left pb-2 text-xs font-semibold text-muted-foreground">Rating</th>
+                  <th className="text-right pb-2 text-xs font-semibold text-muted-foreground">Multiplier</th>
+                  <th className="text-right pb-2 text-xs font-semibold text-muted-foreground">Payout</th>
+                </tr>
+              </thead>
+              <tbody>
+                {payouts.map(p => (
+                  <tr key={p.employee_id} className="border-b last:border-0">
+                    <td className="py-2">{(p.users as any)?.full_name}</td>
+                    <td className="py-2 text-muted-foreground">{(p.users as any)?.department?.name ?? '—'}</td>
+                    <td className="py-2">{p.final_rating ?? '—'}</td>
+                    <td className="py-2 text-right">×{p.payout_multiplier?.toFixed(3) ?? '—'}</td>
+                    <td className="py-2 text-right font-medium">₹{(p.payout_amount ?? 0).toLocaleString('en-IN')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

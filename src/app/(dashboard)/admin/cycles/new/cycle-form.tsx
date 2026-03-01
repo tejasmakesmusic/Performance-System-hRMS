@@ -77,6 +77,26 @@ export function CycleForm() {
         </div>
       </div>
 
+      <div className="border-t pt-4 space-y-2">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Per-cycle multiplier overrides (optional)</p>
+        <p className="text-xs text-muted-foreground">Leave blank to use global payout config defaults.</p>
+        <div className="grid grid-cols-3 gap-3 mt-2">
+          {(['FEE', 'EE', 'ME'] as const).map(tier => (
+            <div key={tier} className="space-y-1">
+              <label className="text-xs font-medium">{tier} override</label>
+              <input
+                name={`${tier.toLowerCase()}_multiplier`}
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="e.g. 1.30"
+                className="w-full rounded border px-2 py-1.5 text-sm"
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+
       <SubmitButton pendingLabel="Creating cycle…">Create Cycle</SubmitButton>
     </form>
   )

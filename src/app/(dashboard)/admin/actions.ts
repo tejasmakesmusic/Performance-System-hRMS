@@ -23,6 +23,16 @@ export async function createCycle(_prev: ActionResult, formData: FormData): Prom
   const totalBudgetRaw = formData.get("total_budget") as string
   const budgetCurrency = (formData.get("budget_currency") as string) || "INR"
 
+  const fee_multiplier = formData.get('fee_multiplier')
+    ? parseFloat(formData.get('fee_multiplier') as string)
+    : null
+  const ee_multiplier = formData.get('ee_multiplier')
+    ? parseFloat(formData.get('ee_multiplier') as string)
+    : null
+  const me_multiplier = formData.get('me_multiplier')
+    ? parseFloat(formData.get('me_multiplier') as string)
+    : null
+
   const { error } = await supabase.from("cycles").insert({
     name: formData.get("name") as string,
     quarter: formData.get("quarter") as string,
@@ -36,6 +46,9 @@ export async function createCycle(_prev: ActionResult, formData: FormData): Prom
     manager_review_deadline: (formData.get("manager_review_deadline") as string) || null,
     calibration_deadline: (formData.get("calibration_deadline") as string) || null,
     created_by: user.id,
+    fee_multiplier,
+    ee_multiplier,
+    me_multiplier,
   })
 
   if (error) return { data: null, error: error.message }
