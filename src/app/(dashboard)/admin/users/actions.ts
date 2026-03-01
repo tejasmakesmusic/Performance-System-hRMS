@@ -5,11 +5,16 @@ import { requireRole } from '@/lib/auth'
 import { fetchZimyoEmployees, transformZimyoEmployee } from '@/lib/zimyo'
 import { revalidatePath } from 'next/cache'
 
-export async function triggerZimyoSync(): Promise<void> {
+export async function triggerZimyoSync(): Promise<{ error?: string }> {
   const user = await requireRole(['admin'])
   const supabase = await createServiceClient()
 
-  const zimyoEmployees = await fetchZimyoEmployees()
+  let zimyoEmployees
+  try {
+    zimyoEmployees = await fetchZimyoEmployees()
+  } catch (e) {
+    return { error: (e as Error).message }
+  }
   let added = 0, updated = 0, deactivated = 0
 
   const emailToId = new Map<string, string>()
@@ -69,6 +74,7 @@ export async function triggerZimyoSync(): Promise<void> {
   })
 
   revalidatePath('/admin/users')
+  return {}
 }
 
 export async function updateUserRole(userId: string, role: string): Promise<void> {

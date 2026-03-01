@@ -18,8 +18,13 @@ export function transformZimyoEmployee(data: ZimyoEmployee) {
 }
 
 export async function fetchZimyoEmployees(): Promise<ZimyoEmployee[]> {
-  const res = await fetch(`${process.env.ZIMYO_API_BASE_URL}/employees`, {
-    headers: { Authorization: `Bearer ${process.env.ZIMYO_API_KEY}` },
+  const base = process.env.ZIMYO_API_BASE_URL
+  const key  = process.env.ZIMYO_API_KEY
+  if (!base || !key) {
+    throw new Error('Zimyo integration is not configured. Set ZIMYO_API_BASE_URL and ZIMYO_API_KEY in your environment.')
+  }
+  const res = await fetch(`${base}/employees`, {
+    headers: { Authorization: `Bearer ${key}` },
   })
   if (!res.ok) throw new Error(`Zimyo API error: ${res.status}`)
   const data = await res.json()

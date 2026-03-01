@@ -2,7 +2,6 @@
 
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireRole } from '@/lib/auth'
-import { parseCsv } from '@/lib/csv'
 import { validateEmail } from '@/lib/validate'
 import { revalidatePath } from 'next/cache'
 import type { ActionResult } from '@/lib/types'
@@ -14,82 +13,175 @@ export interface UploadSummary {
   skippedReasons: string[]
 }
 
-export async function uploadUsersCsv(_prev: ActionResult<UploadSummary>, formData: FormData): Promise<ActionResult<UploadSummary>> {
-  const user = await requireRole(['admin'])
-  const file = formData.get('file') as File
-  if (!file) return { data: null, error: 'No file provided' }
+export interface SheetPreview {
+  headers: string[]
+  previewRows: string[][]
+  csvText: string
+}
 
-  const text = await file.text()
-  let rows: Record<string, string>[]
-  try {
-    rows = parseCsv(text, ['zimyo_id', 'email', 'full_name'])
-  } catch (err) {
-    return { data: null, error: (err as Error).message }
+// ── helpers ──────────────────────────────────────────────────────────────────
+
+function parseCsvText(text: string): Record<string, string>[] {
+  const lines = text.trim().split(/\r?\n/)
+  if (lines.length < 2) return []
+  const headers = splitCsvLine(lines[0])
+  return lines.slice(1).map(line => {
+    const values = splitCsvLine(line)
+    return Object.fromEntries(headers.map((h, i) => [h, (values[i] ?? '').trim()]))
+  })
+}
+
+function splitCsvLine(line: string): string[] {
+  const result: string[] = []
+  let cur = '', inQuote = false
+  for (let i = 0; i < line.length; i++) {
+    if (line[i] === '"') { inQuote = !inQuote }
+    else if (line[i] === ',' && !inQuote) { result.push(cur.trim()); cur = '' }
+    else { cur += line[i] }
   }
+  result.push(cur.trim())
+  return result
+}
+
+function extractSheetId(url: string): { id: string; gid: string } | null {
+  const idMatch = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/)
+  const gidMatch = url.match(/[#&?]gid=(\d+)/)
+  if (!idMatch) return null
+  return { id: idMatch[1], gid: gidMatch?.[1] ?? '0' }
+}
+
+// ── server actions ────────────────────────────────────────────────────────────
+
+export async function fetchSheetPreview(url: string): Promise<ActionResult<SheetPreview>> {
+  const parsed = extractSheetId(url)
+  if (!parsed) return { data: null, error: 'Invalid Google Sheets URL. Make sure it contains /spreadsheets/d/{id}' }
+
+  const exportUrl = `https://docs.google.com/spreadsheets/d/${parsed.id}/export?format=csv&gid=${parsed.gid}`
+
+  let csvText: string
+  try {
+    const res = await fetch(exportUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } })
+    if (!res.ok) {
+      if (res.status === 401 || res.status === 403) {
+        return { data: null, error: 'Sheet is not publicly accessible. Share it with "Anyone with the link" (Viewer access).' }
+      }
+      return { data: null, error: `Failed to fetch sheet: HTTP ${res.status}` }
+    }
+    csvText = await res.text()
+  } catch {
+    return { data: null, error: 'Could not reach Google Sheets. Check the URL and try again.' }
+  }
+
+  const lines = csvText.trim().split(/\r?\n/)
+  if (lines.length < 1) return { data: null, error: 'Sheet appears to be empty.' }
+
+  const headers = splitCsvLine(lines[0])
+  const previewRows = lines.slice(1, 4).map(splitCsvLine)
+
+  return { data: { headers, previewRows, csvText }, error: null }
+}
+
+export async function uploadUsersWithMapping(
+  _prev: ActionResult<UploadSummary>,
+  formData: FormData
+): Promise<ActionResult<UploadSummary>> {
+  const user = await requireRole(['admin'])
+
+  const source = formData.get('source') as string
+  let csvText: string
+
+  if (source === 'sheets') {
+    const sheetUrl = formData.get('sheetUrl') as string
+    const result = await fetchSheetPreview(sheetUrl)
+    if (result.error || !result.data) return { data: null, error: result.error ?? 'Failed to fetch sheet' }
+    csvText = result.data.csvText
+  } else {
+    csvText = formData.get('csvText') as string
+    if (!csvText) return { data: null, error: 'No CSV data provided' }
+  }
+
+  // Read column mappings from formData (map_fieldName → csvColumnHeader)
+  const colMap: Record<string, string> = {}
+  for (const key of ['zimyo_id', 'email', 'full_name', 'department', 'designation', 'manager_email', 'variable_pay']) {
+    const val = formData.get(`map_${key}`) as string
+    if (val) colMap[key] = val
+  }
+
+  if (!colMap.email) return { data: null, error: 'Email column mapping is required.' }
+  if (!colMap.full_name) return { data: null, error: 'Full Name column mapping is required.' }
+
+  const rows = parseCsvText(csvText)
+  if (rows.length === 0) return { data: null, error: 'CSV is empty or could not be parsed.' }
 
   const supabase = await createServiceClient()
   let added = 0, updated = 0, skipped = 0
   const skippedReasons: string[] = []
   const emailToId = new Map<string, string>()
-  const validRows: Record<string, string>[] = []
-
-  // Validate and classify rows, then batch insert/update
   const toInsert: object[] = []
-  const toUpdate: { zimyo_id: string; data: object }[] = []
+  const toUpdate: { email: string; data: object }[] = []
+  const validRows: { original: Record<string, string>; mapped: Record<string, string> }[] = []
 
   for (const row of rows) {
-    if (!validateEmail(row.email)) {
-      skipped++
-      skippedReasons.push(`Row ${row.zimyo_id || '?'}: invalid email "${row.email}"`)
-      continue
+    const mapped: Record<string, string> = {}
+    for (const [field, col] of Object.entries(colMap)) {
+      mapped[field] = row[col] ?? ''
     }
-    if (!row.zimyo_id) {
+
+    if (!validateEmail(mapped.email)) {
       skipped++
-      skippedReasons.push(`Row skipped: missing zimyo_id`)
+      skippedReasons.push(`Skipped: invalid email "${mapped.email || '(empty)'}"`)
       continue
     }
 
-    const userData = {
-      zimyo_id: row.zimyo_id,
-      email: row.email,
-      full_name: row.full_name,
-      department: row.department || null,
-      designation: row.designation || null,
+    const userData: Record<string, unknown> = {
+      email: mapped.email,
+      full_name: mapped.full_name || mapped.email,
+      department: mapped.department || null,
+      designation: mapped.designation || null,
       synced_at: new Date().toISOString(),
+      data_source: 'manual',
+    }
+    if (mapped.zimyo_id) userData.zimyo_id = mapped.zimyo_id
+    if (mapped.variable_pay) {
+      const pay = parseFloat(mapped.variable_pay.replace(/[^0-9.]/g, ''))
+      if (!isNaN(pay)) userData.variable_pay = pay
     }
 
-    const { data: existing } = await supabase.from('users').select('id').eq('zimyo_id', row.zimyo_id).single()
+    const { data: existing } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', mapped.email)
+      .single()
+
     if (existing) {
-      emailToId.set(row.email, existing.id)
-      toUpdate.push({ zimyo_id: row.zimyo_id, data: userData })
+      emailToId.set(mapped.email, existing.id)
+      toUpdate.push({ email: mapped.email, data: userData })
     } else {
-      toInsert.push(userData)
+      toInsert.push({ ...userData, is_active: true })
     }
-    validRows.push(row)
+    validRows.push({ original: row, mapped })
   }
 
-  // Batch insert all new users
   if (toInsert.length > 0) {
     const { data: inserted, error } = await supabase.from('users').insert(toInsert).select('id, email')
     if (error) return { data: null, error: error.message }
     added = inserted?.length ?? 0
-    for (const u of inserted ?? []) {
-      emailToId.set(u.email, u.id)
-    }
+    for (const u of inserted ?? []) emailToId.set(u.email, u.id)
   }
 
-  // Update existing users (no better bulk API without RPC for mixed updates)
-  for (const { zimyo_id, data } of toUpdate) {
-    await supabase.from('users').update(data).eq('zimyo_id', zimyo_id)
+  for (const { email, data } of toUpdate) {
+    await supabase.from('users').update(data).eq('email', email)
     updated++
   }
 
-  // Link managers via zimyo_id lookup
-  for (const row of validRows) {
-    if (row.manager_email) {
-      const managerId = emailToId.get(row.manager_email)
-      if (managerId) {
-        await supabase.from('users').update({ manager_id: managerId }).eq('zimyo_id', row.zimyo_id)
+  // Link managers
+  if (colMap.manager_email) {
+    for (const { mapped } of validRows) {
+      if (mapped.manager_email && validateEmail(mapped.manager_email)) {
+        const managerId = emailToId.get(mapped.manager_email)
+        if (managerId) {
+          await supabase.from('users').update({ manager_id: managerId }).eq('email', mapped.email)
+        }
       }
     }
   }
@@ -98,9 +190,17 @@ export async function uploadUsersCsv(_prev: ActionResult<UploadSummary>, formDat
     changed_by: user.id,
     action: 'csv_upload',
     entity_type: 'user',
-    new_value: { added, updated, skipped },
+    new_value: { added, updated, skipped, source },
   })
 
   revalidatePath('/admin/users')
   return { data: { added, updated, skipped, skippedReasons }, error: null }
+}
+
+// Alias for backward compat
+export async function uploadUsersCsv(
+  prev: ActionResult<UploadSummary>,
+  formData: FormData
+): Promise<ActionResult<UploadSummary>> {
+  return uploadUsersWithMapping(prev, formData)
 }

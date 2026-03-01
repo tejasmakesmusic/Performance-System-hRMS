@@ -3,9 +3,13 @@ import { requireRole } from '@/lib/auth'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { triggerZimyoSync } from './actions'
+import { SubmitButton } from '@/components/submit-button'
+import Link from 'next/link'
 import type { User } from '@/lib/types'
 
-export default async function AdminUsersPage() {
+export default async function AdminUsersPage(props: {
+  searchParams?: Promise<{ syncError?: string }>
+}) {
   await requireRole(['admin'])
   const supabase = await createClient()
   const { data: users } = await supabase.from('users').select('*').order('full_name')
@@ -14,10 +18,16 @@ export default async function AdminUsersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">User Management</h1>
-        <form action={triggerZimyoSync}>
-          <Button type="submit">Sync from Zimyo</Button>
-        </form>
+        <div className="flex gap-2">
+          <Link href="/admin/users/upload">
+            <Button variant="outline">Upload CSV</Button>
+          </Link>
+          <form action={triggerZimyoSync as unknown as (fd: FormData) => Promise<void>}>
+            <SubmitButton>Sync from Zimyo</SubmitButton>
+          </form>
+        </div>
       </div>
+
       {(!users || users.length === 0) ? (
         <p className="text-muted-foreground">No users yet — upload a CSV or sync with Zimyo.</p>
       ) : (

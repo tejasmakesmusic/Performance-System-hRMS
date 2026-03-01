@@ -29,8 +29,6 @@
 
 DO $$
 DECLARE
-  pw_hash text := crypt('password123', gen_salt('bf'));
-
   id_admin    uuid := '00000000-0000-0000-0000-000000000001';
   id_hrbp     uuid := '00000000-0000-0000-0000-000000000002';
   id_alice    uuid := '00000000-0000-0000-0000-000000000003';
@@ -42,18 +40,18 @@ DECLARE
   id_henry    uuid := '00000000-0000-0000-0000-000000000009';
   id_irene    uuid := '00000000-0000-0000-0000-000000000010';
 
-  emails text[] := ARRAY[
-    'admin@test.com', 'hrbp@test.com', 'manager@test.com', 'frank@test.com',
-    'employee@test.com', 'dave@test.com', 'eve@test.com',
-    'grace@test.com', 'henry@test.com', 'irene@test.com'
-  ];
+  -- Each account has its own password matching the login page quick-fill pills
+  emails    text[] := ARRAY['admin@test.com', 'hrbp@test.com', 'manager@test.com', 'frank@test.com', 'employee@test.com', 'dave@test.com', 'eve@test.com', 'grace@test.com', 'henry@test.com', 'irene@test.com'];
+  passwords text[] := ARRAY['admin123',       'hrbp123',       'manager123',       'frank123',       'employee123',       'dave123',       'eve123',       'grace123',       'henry123',       'irene123'];
   ids uuid[] := ARRAY[
     id_admin, id_hrbp, id_alice, id_frank,
     id_bob, id_dave, id_eve, id_grace, id_henry, id_irene
   ];
   i int;
 BEGIN
-  -- Insert into auth.users for each account
+  -- Delete existing to allow re-seeding
+  DELETE FROM auth.users WHERE email = ANY(emails);
+
   FOR i IN 1..array_length(emails, 1) LOOP
     INSERT INTO auth.users (
       id, instance_id, aud, role,
@@ -66,7 +64,7 @@ BEGIN
       ids[i],
       '00000000-0000-0000-0000-000000000000',
       'authenticated', 'authenticated',
-      emails[i], pw_hash,
+      emails[i], crypt(passwords[i], gen_salt('bf')),
       now(), now(), now(),
       '{"provider":"email","providers":["email"]}',
       '{}',
