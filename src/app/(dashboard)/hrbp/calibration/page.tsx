@@ -9,6 +9,8 @@ interface AppraisalRow {
   id: string
   manager_rating: RatingTier | null
   final_rating: RatingTier | null
+  payout_multiplier: number | null
+  payout_amount: number | null
   users: { full_name: string; department: string | null } | null
 }
 
@@ -22,7 +24,7 @@ export default async function CalibrationPage({ searchParams }: { searchParams: 
   const { data: cycle } = await supabase.from('cycles').select('*').eq('id', cycleId).single()
   const { data: appraisals } = await supabase
     .from('appraisals')
-    .select('id, manager_rating, final_rating, users!appraisals_employee_id_fkey(full_name, department)')
+    .select('id, manager_rating, final_rating, payout_multiplier, payout_amount, users!appraisals_employee_id_fkey(full_name, department)')
     .eq('cycle_id', cycleId)
 
   const rows = (appraisals ?? []) as unknown as AppraisalRow[]
@@ -52,6 +54,12 @@ export default async function CalibrationPage({ searchParams }: { searchParams: 
               <th className="p-3 text-left">Department</th>
               <th className="p-3 text-left">Manager Rating</th>
               <th className="p-3 text-left">Final Rating</th>
+              {['locked', 'published'].includes(typedCycle?.status ?? '') && (
+                <>
+                  <th className="p-3 text-right">Multiplier</th>
+                  <th className="p-3 text-right">Payout</th>
+                </>
+              )}
               {isCalibrating && <th className="p-3 text-left">Override</th>}
             </tr>
           </thead>
@@ -62,6 +70,12 @@ export default async function CalibrationPage({ searchParams }: { searchParams: 
                 <td className="p-3">{a.users?.department}</td>
                 <td className="p-3">{a.manager_rating}</td>
                 <td className="p-3 font-medium">{a.final_rating ?? a.manager_rating}</td>
+                {['locked', 'published'].includes(typedCycle?.status ?? '') && (
+                  <>
+                    <td className="p-3 text-right">×{a.payout_multiplier?.toFixed(3) ?? '—'}</td>
+                    <td className="p-3 text-right">₹{(a.payout_amount ?? 0).toLocaleString('en-IN')}</td>
+                  </>
+                )}
                 {isCalibrating && (
                   <td className="p-3">
                     <OverrideForm
@@ -74,6 +88,16 @@ export default async function CalibrationPage({ searchParams }: { searchParams: 
               </tr>
             ))}
           </tbody>
+          {['locked', 'published'].includes(typedCycle?.status ?? '') && (
+            <tfoot>
+              <tr className="border-t font-semibold">
+                <td colSpan={4} className="py-2 pr-3 text-right text-sm">Total payout</td>
+                <td className="py-2 pr-3 text-right text-sm">
+                  ₹{rows.reduce((s, a) => s + (a.payout_amount ?? 0), 0).toLocaleString('en-IN')}
+                </td>
+              </tr>
+            </tfoot>
+          )}
         </table>
       </div>
 
