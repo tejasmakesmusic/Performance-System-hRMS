@@ -31,11 +31,11 @@ export default async function HrbpMyReviewPage() {
     )
   }
 
-  // Find active cycle (non-draft)
+  // Find active cycle
   const { data: cycles } = await supabase
     .from('cycles')
     .select('*')
-    .neq('status', 'draft')
+    .in('status', ['self_review', 'manager_review', 'calibrating', 'locked', 'published'])
     .order('created_at', { ascending: false })
     .limit(1)
 
