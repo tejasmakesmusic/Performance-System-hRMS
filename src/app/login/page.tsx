@@ -104,12 +104,8 @@ export default function LoginPage() {
   }
 
   async function handleMagicLink() {
-    if (!email) { setMessage('Enter your email first.'); setIsError(true); return }
-    setLoading(true); setIsError(false)
-    const result = await signIn('resend', { email, redirect: false })
-    setMessage(result?.error ? result.error : 'Check your inbox for the login link.')
-    setIsError(!!result?.error)
-    setLoading(false)
+    setMessage('Magic link login is not yet configured.')
+    setIsError(true)
   }
 
   async function handleGoogleLogin() {

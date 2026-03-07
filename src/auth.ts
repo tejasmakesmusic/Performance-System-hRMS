@@ -1,7 +1,6 @@
 import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
 import Google from 'next-auth/providers/google'
-import Resend from 'next-auth/providers/resend'
 import { compare } from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
 import type { UserRole } from '@prisma/client'
@@ -37,11 +36,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       clientId:     process.env.AUTH_GOOGLE_ID!,
       clientSecret: process.env.AUTH_GOOGLE_SECRET!,
     }),
-
-    Resend({
-      apiKey: process.env.AUTH_RESEND_KEY!,
-      from:   'noreply@pms.yourdomain.com',
-    }),
   ],
 
   callbacks: {
@@ -69,8 +63,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
 
     async session({ session, token }) {
-      session.user.id   = token.id
-      session.user.role = token.role
+      session.user.id   = token.id as string
+      session.user.role = token.role as UserRole
       return session
     },
   },
