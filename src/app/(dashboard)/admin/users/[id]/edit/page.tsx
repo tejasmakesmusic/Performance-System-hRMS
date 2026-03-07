@@ -34,7 +34,7 @@ export default async function EditUserPage({ params }: { params: Promise<{ id: s
         <Link href="/admin/users" className="text-sm text-muted-foreground hover:underline">Back</Link>
       </div>
       <EditUserForm
-        user={user as Parameters<typeof EditUserForm>[0]['user']}
+        user={user as unknown as Parameters<typeof EditUserForm>[0]['user']}
         departments={departments}
         managers={managers}
         assignedDeptIds={hrbpDepts.map(h => h.department_id)}

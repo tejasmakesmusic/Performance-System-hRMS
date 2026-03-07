@@ -23,7 +23,7 @@ export async function saveDraft(
     if (existing) {
       await prisma.draft.update({
         where: { id: existing.id },
-        data: { form_data: formData, updated_at: new Date() },
+        data: { form_data: formData as Parameters<typeof prisma.draft.update>[0]['data']['form_data'], updated_at: new Date() },
       })
     } else {
       await prisma.draft.create({
@@ -31,7 +31,7 @@ export async function saveDraft(
           user_id: user.id,
           entity_type: entityType,
           entity_id: entityId ?? null,
-          form_data: formData,
+          form_data: formData as Parameters<typeof prisma.draft.create>[0]['data']['form_data'],
         },
       })
     }
@@ -45,7 +45,7 @@ export async function saveDraft(
 export async function loadDraft(
   entityType: string,
   entityId: string | null
-): Promise<ActionResult<Record<string, unknown>>> {
+): Promise<ActionResult<Record<string, unknown> | null>> {
   try {
     const user = await requireRole(['employee', 'manager', 'hrbp', 'admin'])
 

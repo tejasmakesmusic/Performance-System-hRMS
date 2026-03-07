@@ -24,7 +24,7 @@ export default async function HrbpAuditLogPage({ searchParams }: { searchParams:
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Audit Log</h1>
       <AuditLogTable
-        logs={displayLogs as Parameters<typeof AuditLogTable>[0]['logs']}
+        logs={displayLogs as unknown as Parameters<typeof AuditLogTable>[0]['logs']}
         page={page}
         hasMore={hasMore}
         baseUrl="/hrbp/audit-log"

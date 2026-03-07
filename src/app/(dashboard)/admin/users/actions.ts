@@ -29,15 +29,19 @@ export async function triggerZimyoSync(): Promise<{ error?: string }> {
     })
 
     if (existing) {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { department: _dept, ...transformedWithoutDept } = transformed
       await prisma.user.update({
         where: { zimyo_id: transformed.zimyo_id },
-        data: { ...transformed, is_active: true, synced_at: new Date() },
+        data: { ...transformedWithoutDept, is_active: true, synced_at: new Date() },
       })
       emailToId.set(transformed.email, existing.id)
       updated++
     } else {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { department: _dept, ...transformedWithoutDept } = transformed
       const newUser = await prisma.user.create({
-        data: { ...transformed, synced_at: new Date() },
+        data: { ...transformedWithoutDept, synced_at: new Date() },
         select: { id: true, email: true },
       })
       emailToId.set(newUser.email, newUser.id)

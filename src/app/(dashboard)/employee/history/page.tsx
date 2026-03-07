@@ -32,6 +32,7 @@ export default async function EmployeeHistoryPage() {
   )
 
   // Annotate each appraisal with trend vs previous cycle
+  // Map `cycle` → `cycles` to match HistoryRows' AppraisalWithCycle shape (legacy naming)
   const enriched = published.map((a, i) => {
     const prevRating = published[i + 1]?.final_rating
     const currScore = a.final_rating ? RATING_ORDER[a.final_rating] ?? 0 : 0
@@ -40,7 +41,7 @@ export default async function EmployeeHistoryPage() {
       ? currScore > prevScore ? 'up' : currScore < prevScore ? 'down' : 'same'
       : null
     return {
-      appraisal: a,
+      appraisal: { ...a, cycles: a.cycle },
       selfReview: selfReviewMap.get(a.cycle_id) ?? null,
       trend,
     }
@@ -62,7 +63,7 @@ export default async function EmployeeHistoryPage() {
           Your results will appear here once a review cycle is published.
         </p>
       ) : (
-        <HistoryRows rows={enriched as Parameters<typeof HistoryRows>[0]['rows']} />
+        <HistoryRows rows={enriched as unknown as Parameters<typeof HistoryRows>[0]['rows']} />
       )}
     </div>
   )
