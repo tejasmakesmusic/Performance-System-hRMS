@@ -8,6 +8,9 @@ neonConfig.webSocketConstructor = require("ws");
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
+  datasource: {
+    url: process.env.DIRECT_URL!,
+  },
   // @ts-expect-error -- migrate.adapter() is a valid Prisma 7 runtime API but not yet reflected in @prisma/config 7.4.2 types
   migrate: {
     async adapter() {
