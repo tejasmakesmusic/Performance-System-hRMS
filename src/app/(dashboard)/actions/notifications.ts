@@ -30,9 +30,10 @@ export async function markAllNotificationsRead() {
   const session = await auth()
   if (!session?.user?.id) return
 
+  // Mark unread (pending) notifications as read (sent) without hiding them
   await prisma.notification.updateMany({
-    where: { recipient_id: session.user.id, dismissed_at: null },
-    data: { dismissed_at: new Date() },
+    where: { recipient_id: session.user.id, status: 'pending' },
+    data: { status: 'sent' },
   })
   revalidatePath('/', 'layout')
 }

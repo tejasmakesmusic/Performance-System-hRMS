@@ -42,25 +42,29 @@ export async function createCycle(_prev: ActionResult, formData: FormData): Prom
     return { data: null, error: 'ME multiplier override must be between 0 and 5' }
   }
 
-  await prisma.cycle.create({
-    data: {
-      name: formData.get('name') as string,
-      quarter: formData.get('quarter') as string,
-      year: Number(formData.get('year')),
-      sme_multiplier: smeMultiplierRaw,
-      business_multiplier: businessMultiplierRaw,
-      total_budget: totalBudgetRaw ? Number(totalBudgetRaw) : null,
-      budget_currency: budgetCurrency,
-      kpi_setting_deadline: (formData.get('kpi_setting_deadline') as string) || null,
-      self_review_deadline: (formData.get('self_review_deadline') as string) || null,
-      manager_review_deadline: (formData.get('manager_review_deadline') as string) || null,
-      calibration_deadline: (formData.get('calibration_deadline') as string) || null,
-      created_by: user.id,
-      fee_multiplier,
-      ee_multiplier,
-      me_multiplier,
-    },
-  })
+  try {
+    await prisma.cycle.create({
+      data: {
+        name: formData.get('name') as string,
+        quarter: formData.get('quarter') as string,
+        year: Number(formData.get('year')),
+        sme_multiplier: smeMultiplierRaw,
+        business_multiplier: businessMultiplierRaw,
+        total_budget: totalBudgetRaw ? Number(totalBudgetRaw) : null,
+        budget_currency: budgetCurrency,
+        kpi_setting_deadline: (formData.get('kpi_setting_deadline') as string) || null,
+        self_review_deadline: (formData.get('self_review_deadline') as string) || null,
+        manager_review_deadline: (formData.get('manager_review_deadline') as string) || null,
+        calibration_deadline: (formData.get('calibration_deadline') as string) || null,
+        created_by: user.id,
+        fee_multiplier,
+        ee_multiplier,
+        me_multiplier,
+      },
+    })
+  } catch (e) {
+    return { data: null, error: e instanceof Error ? e.message : 'Failed to create cycle' }
+  }
 
   revalidatePath('/admin')
   return { data: null, error: null }

@@ -247,10 +247,14 @@ export async function updateUserRole(userId: string, role: string): Promise<void
     select: { role: true },
   })
 
-  await prisma.user.update({
-    where: { id: userId },
-    data: { role: role as import('@prisma/client').UserRole },
-  })
+  try {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { role: role as import('@prisma/client').UserRole },
+    })
+  } catch (e) {
+    throw new Error(e instanceof Error ? e.message : 'Failed to update role')
+  }
 
   await prisma.auditLog.create({
     data: {
@@ -269,10 +273,14 @@ export async function updateUserRole(userId: string, role: string): Promise<void
 export async function toggleUserActive(userId: string, currentActive: boolean): Promise<void> {
   const user = await requireRole(['admin'])
 
-  await prisma.user.update({
-    where: { id: userId },
-    data: { is_active: !currentActive },
-  })
+  try {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { is_active: !currentActive },
+    })
+  } catch (e) {
+    throw new Error(e instanceof Error ? e.message : 'Failed to toggle user status')
+  }
 
   await prisma.auditLog.create({
     data: {
