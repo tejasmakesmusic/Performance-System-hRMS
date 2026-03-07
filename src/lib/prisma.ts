@@ -10,7 +10,10 @@ if (typeof WebSocket === "undefined") {
 }
 
 function createPrismaClient() {
-  const connectionString = process.env.DATABASE_URL!;
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    throw new Error("Missing required environment variable: DATABASE_URL");
+  }
   // PrismaNeon accepts PoolConfig (not a Pool instance)
   const adapter = new PrismaNeon({ connectionString });
   return new PrismaClient({ adapter });
