@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { prisma } from '@/lib/prisma'
 import { requireRole } from '@/lib/auth'
 import type { ActionResult } from '@/lib/types'
 
@@ -10,20 +10,32 @@ export async function saveDraft(
   formData: Record<string, unknown>
 ): Promise<ActionResult> {
   try {
-    await requireRole(['employee', 'manager', 'hrbp', 'admin'])
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return { data: null, error: 'Not authenticated' }
+    const user = await requireRole(['employee', 'manager', 'hrbp', 'admin'])
 
-    await supabase.from('drafts').upsert(
-      {
+    const existing = await prisma.draft.findFirst({
+      where: {
         user_id: user.id,
         entity_type: entityType,
-        entity_id: entityId,
-        form_data: formData,
+        entity_id: entityId ?? null,
       },
-      { onConflict: 'user_id,entity_type,entity_id' }
-    )
+    })
+
+    if (existing) {
+      await prisma.draft.update({
+        where: { id: existing.id },
+        data: { form_data: formData, updated_at: new Date() },
+      })
+    } else {
+      await prisma.draft.create({
+        data: {
+          user_id: user.id,
+          entity_type: entityType,
+          entity_id: entityId ?? null,
+          form_data: formData,
+        },
+      })
+    }
+
     return { data: null, error: null }
   } catch (e) {
     return { data: null, error: e instanceof Error ? e.message : 'Save failed' }
@@ -35,25 +47,16 @@ export async function loadDraft(
   entityId: string | null
 ): Promise<ActionResult<Record<string, unknown>>> {
   try {
-    await requireRole(['employee', 'manager', 'hrbp', 'admin'])
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return { data: null, error: 'Not authenticated' }
+    const user = await requireRole(['employee', 'manager', 'hrbp', 'admin'])
 
-    const query = supabase
-      .from('drafts')
-      .select('form_data')
-      .eq('user_id', user.id)
-      .eq('entity_type', entityType)
-
-    if (entityId) {
-      query.eq('entity_id', entityId)
-    } else {
-      query.is('entity_id', null)
-    }
-
-    const { data } = await query.maybeSingle()
-    return { data: data?.form_data ?? null, error: null }
+    const draft = await prisma.draft.findFirst({
+      where: {
+        user_id: user.id,
+        entity_type: entityType,
+        entity_id: entityId ?? null,
+      },
+    })
+    return { data: draft ? (draft.form_data as Record<string, unknown>) : null, error: null }
   } catch (e) {
     return { data: null, error: e instanceof Error ? e.message : 'Load failed' }
   }
@@ -64,24 +67,16 @@ export async function clearDraft(
   entityId: string | null
 ): Promise<ActionResult> {
   try {
-    await requireRole(['employee', 'manager', 'hrbp', 'admin'])
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return { data: null, error: 'Not authenticated' }
+    const user = await requireRole(['employee', 'manager', 'hrbp', 'admin'])
 
-    const query = supabase
-      .from('drafts')
-      .delete()
-      .eq('user_id', user.id)
-      .eq('entity_type', entityType)
+    await prisma.draft.deleteMany({
+      where: {
+        user_id: user.id,
+        entity_type: entityType,
+        entity_id: entityId ?? null,
+      },
+    })
 
-    if (entityId) {
-      query.eq('entity_id', entityId)
-    } else {
-      query.is('entity_id', null)
-    }
-
-    await query
     return { data: null, error: null }
   } catch (e) {
     return { data: null, error: e instanceof Error ? e.message : 'Clear failed' }
